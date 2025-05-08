@@ -5,14 +5,27 @@ using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using DigitalWalletAPI.Application.Interfaces;
 using DigitalWalletAPI.Application.Services;
-using DigitalWalletAPI.Infrastructure.Data;
+using DigitalWalletAPI.Infrastructure.Data.Contexts;
 using DigitalWalletAPI.Infrastructure.Repositories;
 using DigitalWalletAPI.Domain.Enums;
+using DigitalWalletAPI.API.Middleware;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 builder.Services.AddControllers();
+
+// Configure CORS
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowAll",
+        builder =>
+        {
+            builder.AllowAnyOrigin()
+                   .AllowAnyMethod()
+                   .AllowAnyHeader();
+        });
+});
 
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
@@ -47,7 +60,13 @@ builder.Services.AddSwaggerGen(c =>
 });
 
 // Configure DbContext
-builder.Services.AddDbContext<ApplicationDbContext>(options =>
+builder.Services.AddDbContext<UserContext>(options =>
+    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+builder.Services.AddDbContext<WalletContext>(options =>
+    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+builder.Services.AddDbContext<TransactionContext>(options =>
+    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+builder.Services.AddDbContext<SystemConfigurationContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
 // Configure Dependency Injection
@@ -93,6 +112,11 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
+app.UseCors("AllowAll");
+
+// Adiciona o middleware de tratamento de erros
+app.UseMiddleware<ErrorHandlingMiddleware>();
+
 app.UseHttpsRedirection();
 
 app.UseAuthentication();
@@ -104,9 +128,17 @@ app.MapControllers();
 using (var scope = app.Services.CreateScope())
 {
     var services = scope.ServiceProvider;
-    var context = services.GetRequiredService<ApplicationDbContext>();
-    context.Database.Migrate();
-    await SeedData.InitializeAsync(services);
+    
+    // Apply migrations for each context
+    var userContext = services.GetRequiredService<UserContext>();
+    var walletContext = services.GetRequiredService<WalletContext>();
+    var transactionContext = services.GetRequiredService<TransactionContext>();
+    var systemConfigContext = services.GetRequiredService<SystemConfigurationContext>();
+    
+    await userContext.Database.MigrateAsync();
+    await walletContext.Database.MigrateAsync();
+    await transactionContext.Database.MigrateAsync();
+    await systemConfigContext.Database.MigrateAsync();
 }
 
 app.Run();

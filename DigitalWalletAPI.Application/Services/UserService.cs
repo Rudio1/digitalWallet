@@ -1,5 +1,3 @@
-using System;
-using System.Threading.Tasks;
 using System.Security.Claims;
 using System.IdentityModel.Tokens.Jwt;
 using Microsoft.IdentityModel.Tokens;
@@ -8,8 +6,9 @@ using DigitalWalletAPI.Application.DTOs;
 using DigitalWalletAPI.Application.Interfaces;
 using DigitalWalletAPI.Domain.Entities;
 using DigitalWalletAPI.Domain.Enums;
+using DigitalWalletAPI.Domain.Exceptions;
 using Microsoft.Extensions.Configuration;
-using BC = BCrypt.Net.BCrypt;
+using System.Security.Cryptography;
 
 namespace DigitalWalletAPI.Application.Services
 {
@@ -35,8 +34,8 @@ namespace DigitalWalletAPI.Application.Services
         public async Task<UserAuthResponseDto> AuthenticateAsync(LoginUserDto loginDto)
         {
             var user = await _userRepository.GetByEmailAsync(loginDto.Email);
-            if (user == null || !BC.Verify(loginDto.Password, user.Password))
-                throw new UnauthorizedAccessException("Email ou senha inválidos");
+            if (user == null || !VerifyPassword(loginDto.Password, user.Password))
+                throw new UserException("Email ou senha inválidos", 401);
 
             var token = await GenerateJwtToken(user);
 
@@ -55,15 +54,16 @@ namespace DigitalWalletAPI.Application.Services
         public async Task<UserDto> CreateAsync(CreateUserDto createDto)
         {
             if (await _userRepository.ExistsAsync(createDto.Email))
-                throw new InvalidOperationException("Email já está em uso");
+                throw new UserException("Email já está em uso", 400);
 
             var user = new User
             {
                 Id = Guid.NewGuid(),
                 Name = createDto.Name,
                 Email = createDto.Email,
-                Password = BC.HashPassword(createDto.Password),
-                CreatedAt = DateTime.UtcNow
+                Password = HashPassword(createDto.Password),
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
             };
 
             await _userRepository.CreateAsync(user);
@@ -74,7 +74,8 @@ namespace DigitalWalletAPI.Application.Services
                 Id = Guid.NewGuid(),
                 UserId = user.Id,
                 Balance = decimal.Parse(initialBalanceValue),
-                CreatedAt = DateTime.UtcNow
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
             };
 
             await _walletRepository.CreateAsync(wallet);
@@ -91,7 +92,7 @@ namespace DigitalWalletAPI.Application.Services
         {
             var user = await _userRepository.GetByIdAsync(id);
             if (user == null)
-                throw new KeyNotFoundException("Usuário não encontrado");
+                throw new UserException("Usuário não encontrado", 404);
 
             return new UserDto
             {
@@ -101,22 +102,37 @@ namespace DigitalWalletAPI.Application.Services
             };
         }
 
+        private string HashPassword(string password)
+        {
+            using var sha256 = SHA256.Create();
+            var hashedBytes = sha256.ComputeHash(Encoding.UTF8.GetBytes(password));
+            return Convert.ToBase64String(hashedBytes);
+        }
+
+        private bool VerifyPassword(string password, string hashedPassword)
+        {
+            return HashPassword(password) == hashedPassword;
+        }
+
         private async Task<string> GenerateJwtToken(User user)
         {
             var tokenHandler = new JwtSecurityTokenHandler();
-            var key = Encoding.ASCII.GetBytes(await _configService.GetValueAsync(SystemConstants.JwtSecretKeyParameter));
+            var key = Encoding.ASCII.GetBytes(_configuration["JwtSettings:SecretKey"]);
+            
+            var issuer = await _configService.GetValueAsync(SystemConstants.JwtIssuerParameter);
+            var audience = await _configService.GetValueAsync(SystemConstants.JwtAudienceParameter);
+            
             var tokenDescriptor = new SecurityTokenDescriptor
             {
                 Subject = new ClaimsIdentity(new[]
                 {
                     new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
-                    new Claim(ClaimTypes.Email, user.Email),
-                    new Claim(ClaimTypes.Name, user.Name)
+                    new Claim(ClaimTypes.Email, user.Email)
                 }),
-                Expires = DateTime.UtcNow.AddMinutes(double.Parse(await _configService.GetValueAsync(SystemConstants.JwtExpirationInMinutesParameter))),
+                Expires = DateTime.UtcNow.AddHours(1),
                 SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(key), SecurityAlgorithms.HmacSha256Signature),
-                Issuer = await _configService.GetValueAsync(SystemConstants.JwtIssuerParameter),
-                Audience = await _configService.GetValueAsync(SystemConstants.JwtAudienceParameter)
+                Issuer = issuer,
+                Audience = audience
             };
 
             var token = tokenHandler.CreateToken(tokenDescriptor);

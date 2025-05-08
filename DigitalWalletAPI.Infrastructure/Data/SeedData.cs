@@ -1,6 +1,7 @@
 using System;
 using System.Threading.Tasks;
 using DigitalWalletAPI.Domain.Entities;
+using DigitalWalletAPI.Infrastructure.Data.Contexts;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -11,11 +12,13 @@ namespace DigitalWalletAPI.Infrastructure.Data
         public static async Task InitializeAsync(IServiceProvider serviceProvider)
         {
             using var scope = serviceProvider.CreateScope();
-            var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+            var services = scope.ServiceProvider;
 
-            await context.Database.EnsureCreatedAsync();
+            var userContext = services.GetRequiredService<UserContext>();
+            var walletContext = services.GetRequiredService<WalletContext>();
+            var transactionContext = services.GetRequiredService<TransactionContext>();
 
-            if (await context.Users.AnyAsync())
+            if (await userContext.Users.AnyAsync())
                 return;
 
             var user1 = new User
@@ -34,8 +37,8 @@ namespace DigitalWalletAPI.Infrastructure.Data
                 CreatedAt = DateTime.UtcNow
             };
 
-            context.Users.AddRange(user1, user2);
-            await context.SaveChangesAsync();
+            userContext.Users.AddRange(user1, user2);
+            await userContext.SaveChangesAsync();
 
             var wallet1 = new Wallet
             {
@@ -51,8 +54,8 @@ namespace DigitalWalletAPI.Infrastructure.Data
                 CreatedAt = DateTime.UtcNow
             };
 
-            context.Wallets.AddRange(wallet1, wallet2);
-            await context.SaveChangesAsync();
+            walletContext.Wallets.AddRange(wallet1, wallet2);
+            await walletContext.SaveChangesAsync();
 
             var transaction1 = new Transaction
             {
@@ -62,8 +65,8 @@ namespace DigitalWalletAPI.Infrastructure.Data
                 CreatedAt = DateTime.UtcNow
             };
 
-            context.Transactions.Add(transaction1);
-            await context.SaveChangesAsync();
+            transactionContext.Transactions.Add(transaction1);
+            await transactionContext.SaveChangesAsync();
         }
     }
 } 

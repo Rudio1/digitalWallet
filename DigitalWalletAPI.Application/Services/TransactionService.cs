@@ -1,10 +1,10 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Threading.Tasks;
-using DigitalWalletAPI.Application.DTOs;
-using DigitalWalletAPI.Application.Interfaces;
+using System.Linq;
 using DigitalWalletAPI.Domain.Entities;
+using DigitalWalletAPI.Application.Interfaces;
+using DigitalWalletAPI.Application.DTOs;
 
 namespace DigitalWalletAPI.Application.Services
 {
@@ -25,17 +25,14 @@ namespace DigitalWalletAPI.Application.Services
         {
             var senderWallet = await _walletRepository.GetByIdAsync(senderWalletId);
             if (senderWallet == null)
-                throw new KeyNotFoundException("Carteira do remetente não encontrada");
+                throw new Exception("Carteira do remetente não encontrada");
 
             var receiverWallet = await _walletRepository.GetByIdAsync(createDto.ReceiverWalletId);
             if (receiverWallet == null)
-                throw new KeyNotFoundException("Carteira do destinatário não encontrada");
-
-            if (createDto.Amount <= 0)
-                throw new InvalidOperationException("O valor da transferência deve ser maior que zero");
+                throw new Exception("Carteira do destinatário não encontrada");
 
             if (senderWallet.Balance < createDto.Amount)
-                throw new InvalidOperationException("Saldo insuficiente para realizar a transferência");
+                throw new Exception("Saldo insuficiente");
 
             var transaction = new Transaction
             {
@@ -46,12 +43,16 @@ namespace DigitalWalletAPI.Application.Services
                 CreatedAt = DateTime.UtcNow
             };
 
+            await _transactionRepository.CreateAsync(transaction);
+
+            // Atualiza os saldos das carteiras
             senderWallet.Balance -= createDto.Amount;
             receiverWallet.Balance += createDto.Amount;
+            senderWallet.UpdatedAt = DateTime.UtcNow;
+            receiverWallet.UpdatedAt = DateTime.UtcNow;
 
             await _walletRepository.UpdateAsync(senderWallet);
             await _walletRepository.UpdateAsync(receiverWallet);
-            await _transactionRepository.CreateAsync(transaction);
 
             return new TransactionDto
             {
@@ -65,11 +66,7 @@ namespace DigitalWalletAPI.Application.Services
 
         public async Task<IEnumerable<TransactionDto>> GetByWalletIdAsync(Guid walletId, TransactionFilterDto filterDto)
         {
-            var transactions = await _transactionRepository.GetByWalletIdAsync(
-                walletId,
-                filterDto?.StartDate,
-                filterDto?.EndDate);
-
+            var transactions = await _transactionRepository.GetByWalletIdAsync(walletId, filterDto?.StartDate, filterDto?.EndDate);
             return transactions.Select(t => new TransactionDto
             {
                 Id = t.Id,

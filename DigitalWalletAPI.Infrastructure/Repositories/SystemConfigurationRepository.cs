@@ -1,17 +1,17 @@
 using System;
 using System.Threading.Tasks;
-using Microsoft.EntityFrameworkCore;
 using DigitalWalletAPI.Domain.Entities;
 using DigitalWalletAPI.Application.Interfaces;
-using DigitalWalletAPI.Infrastructure.Data;
+using DigitalWalletAPI.Infrastructure.Data.Contexts;
+using Microsoft.EntityFrameworkCore;
 
 namespace DigitalWalletAPI.Infrastructure.Repositories
 {
     public class SystemConfigurationRepository : ISystemConfigurationRepository
     {
-        private readonly ApplicationDbContext _context;
+        private readonly SystemConfigurationContext _context;
 
-        public SystemConfigurationRepository(ApplicationDbContext context)
+        public SystemConfigurationRepository(SystemConfigurationContext context)
         {
             _context = context;
         }
@@ -19,7 +19,7 @@ namespace DigitalWalletAPI.Infrastructure.Repositories
         public async Task<SystemConfiguration> GetByKeyAsync(string key)
         {
             return await _context.SystemConfigurations
-                .FirstOrDefaultAsync(x => x.Parameter == key);
+                .FirstOrDefaultAsync(c => c.Parameter == key);
         }
 
         public async Task<SystemConfiguration> CreateAsync(SystemConfiguration configuration)
@@ -31,7 +31,7 @@ namespace DigitalWalletAPI.Infrastructure.Repositories
 
         public async Task UpdateAsync(SystemConfiguration configuration)
         {
-            _context.Entry(configuration).State = EntityState.Modified;
+            _context.SystemConfigurations.Update(configuration);
             await _context.SaveChangesAsync();
         }
     }

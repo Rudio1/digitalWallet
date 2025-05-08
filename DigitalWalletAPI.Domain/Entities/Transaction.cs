@@ -9,7 +9,5 @@ namespace DigitalWalletAPI.Domain.Entities
         public Guid ReceiverWalletId { get; set; }
         public decimal Amount { get; set; }
         public DateTime CreatedAt { get; set; }
-        public Wallet SenderWallet { get; set; }
-        public Wallet ReceiverWallet { get; set; }
     }
 } 

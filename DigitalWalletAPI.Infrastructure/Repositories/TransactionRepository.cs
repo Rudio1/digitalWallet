@@ -1,35 +1,30 @@
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
-using System.Linq;
-using Microsoft.EntityFrameworkCore;
 using DigitalWalletAPI.Domain.Entities;
 using DigitalWalletAPI.Application.Interfaces;
-using DigitalWalletAPI.Infrastructure.Data;
+using DigitalWalletAPI.Infrastructure.Data.Contexts;
+using Microsoft.EntityFrameworkCore;
 
 namespace DigitalWalletAPI.Infrastructure.Repositories
 {
     public class TransactionRepository : ITransactionRepository
     {
-        private readonly ApplicationDbContext _context;
+        private readonly TransactionContext _context;
 
-        public TransactionRepository(ApplicationDbContext context)
+        public TransactionRepository(TransactionContext context)
         {
             _context = context;
         }
 
-        public async Task<Transaction> CreateAsync(Transaction transaction)
+        public async Task<Transaction> GetByIdAsync(Guid id)
         {
-            await _context.Transactions.AddAsync(transaction);
-            await _context.SaveChangesAsync();
-            return transaction;
+            return await _context.Transactions.FindAsync(id);
         }
 
         public async Task<IEnumerable<Transaction>> GetByWalletIdAsync(Guid walletId, DateTime? startDate = null, DateTime? endDate = null)
         {
             var query = _context.Transactions
-                .Include(t => t.SenderWallet)
-                .Include(t => t.ReceiverWallet)
                 .Where(t => t.SenderWalletId == walletId || t.ReceiverWalletId == walletId);
 
             if (startDate.HasValue)
@@ -41,12 +36,11 @@ namespace DigitalWalletAPI.Infrastructure.Repositories
             return await query.OrderByDescending(t => t.CreatedAt).ToListAsync();
         }
 
-        public async Task<Transaction> GetByIdAsync(Guid id)
+        public async Task<Transaction> CreateAsync(Transaction transaction)
         {
-            return await _context.Transactions
-                .Include(t => t.SenderWallet)
-                .Include(t => t.ReceiverWallet)
-                .FirstOrDefaultAsync(t => t.Id == id);
+            await _context.Transactions.AddAsync(transaction);
+            await _context.SaveChangesAsync();
+            return transaction;
         }
     }
 } 
