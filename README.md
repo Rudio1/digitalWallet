@@ -5,10 +5,15 @@ API para gerenciamento de carteira digital, permitindo transferências entre usu
 
 ## Tecnologias Utilizadas
 - .NET 9
+- ASP.NET Core
 - Entity Framework Core
 - SQL Server
 - JWT Authentication
 - Swagger/OpenAPI
+
+## Escolha do Banco de Dados
+
+Optei pelo SQL Server por ser o banco de dados relacional com o qual tenho maior experiência e familiaridade no ecossistema .NET
 
 ## Arquitetura
 - Clean Architecture
