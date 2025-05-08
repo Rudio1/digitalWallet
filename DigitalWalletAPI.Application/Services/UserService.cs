@@ -8,7 +8,9 @@ using DigitalWalletAPI.Domain.Entities;
 using DigitalWalletAPI.Domain.Enums;
 using DigitalWalletAPI.Domain.Exceptions;
 using Microsoft.Extensions.Configuration;
+using Microsoft.AspNetCore.Identity;
 using System.Security.Cryptography;
+using DigitalWalletAPI.Domain.Interfaces;
 
 namespace DigitalWalletAPI.Application.Services
 {
@@ -18,30 +20,35 @@ namespace DigitalWalletAPI.Application.Services
         private readonly IWalletRepository _walletRepository;
         private readonly IConfiguration _configuration;
         private readonly ISystemConfigurationService _configService;
+        private readonly IPasswordHasher<User> _passwordHasher;
 
         public UserService(
             IUserRepository userRepository,
             IWalletRepository walletRepository,
             IConfiguration configuration,
-            ISystemConfigurationService configService)
+            ISystemConfigurationService configService,
+            IPasswordHasher<User> passwordHasher)
         {
             _userRepository = userRepository;
             _walletRepository = walletRepository;
             _configuration = configuration;
             _configService = configService;
+            _passwordHasher = passwordHasher;
         }
 
         public async Task<UserAuthResponseDto> AuthenticateAsync(LoginUserDto loginDto)
         {
             var user = await _userRepository.GetByEmailAsync(loginDto.Email);
-            if (user == null || !VerifyPassword(loginDto.Password, user.Password))
+            if (user == null || !VerifyPassword(user, loginDto.Password))
                 throw new UserException("Email ou senha inválidos", 401);
 
             var token = await GenerateJwtToken(user);
+            var refreshToken = GenerateRefreshToken();
 
             return new UserAuthResponseDto
             {
                 Token = token,
+                RefreshToken = refreshToken,
                 User = new UserDto
                 {
                     Id = user.Id,
@@ -61,23 +68,20 @@ namespace DigitalWalletAPI.Application.Services
                 Id = Guid.NewGuid(),
                 Name = createDto.Name,
                 Email = createDto.Email,
-                Password = HashPassword(createDto.Password),
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow
             };
 
+            user.Password = HashPassword(user, createDto.Password);
             await _userRepository.CreateAsync(user);
 
             var initialBalanceValue = await _configService.GetValueAsync(SystemConstants.InitialBalanceParameter);
-            var wallet = new Wallet
+            if (!decimal.TryParse(initialBalanceValue, out decimal initialBalance))
             {
-                Id = Guid.NewGuid(),
-                UserId = user.Id,
-                Balance = decimal.Parse(initialBalanceValue),
-                CreatedAt = DateTime.UtcNow,
-                UpdatedAt = DateTime.UtcNow
-            };
+                initialBalance = 0;
+            }
 
+            var wallet = new Wallet(user.Id, initialBalance);
             await _walletRepository.CreateAsync(wallet);
 
             return new UserDto
@@ -102,26 +106,31 @@ namespace DigitalWalletAPI.Application.Services
             };
         }
 
-        private string HashPassword(string password)
+        private string HashPassword(User user, string password)
         {
-            using var sha256 = SHA256.Create();
-            var hashedBytes = sha256.ComputeHash(Encoding.UTF8.GetBytes(password));
-            return Convert.ToBase64String(hashedBytes);
+            return _passwordHasher.HashPassword(user, password);
         }
 
-        private bool VerifyPassword(string password, string hashedPassword)
+        private bool VerifyPassword(User user, string password)
         {
-            return HashPassword(password) == hashedPassword;
+            var result = _passwordHasher.VerifyHashedPassword(user, user.Password, password);
+            return result switch
+            {
+                PasswordVerificationResult.Success => true,
+                PasswordVerificationResult.Failed => false,
+                PasswordVerificationResult.SuccessRehashNeeded => true,
+                _ => false
+            };
         }
 
         private async Task<string> GenerateJwtToken(User user)
         {
             var tokenHandler = new JwtSecurityTokenHandler();
             var key = Encoding.ASCII.GetBytes(_configuration["JwtSettings:SecretKey"]);
-            
+
             var issuer = await _configService.GetValueAsync(SystemConstants.JwtIssuerParameter);
             var audience = await _configService.GetValueAsync(SystemConstants.JwtAudienceParameter);
-            
+
             var tokenDescriptor = new SecurityTokenDescriptor
             {
                 Subject = new ClaimsIdentity(new[]
@@ -137,6 +146,16 @@ namespace DigitalWalletAPI.Application.Services
 
             var token = tokenHandler.CreateToken(tokenDescriptor);
             return tokenHandler.WriteToken(token);
+        }
+
+        private string GenerateRefreshToken()
+        {
+            using (var rng = RandomNumberGenerator.Create())
+            {
+                var randomBytes = new byte[32];
+                rng.GetBytes(randomBytes);
+                return Convert.ToBase64String(randomBytes);
+            }
         }
     }
 }

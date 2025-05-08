@@ -9,5 +9,6 @@ namespace DigitalWalletAPI.Application.Services
         Task<WalletDto> GetByUserIdAsync(Guid userId);
         Task<decimal> GetBalanceAsync(Guid walletId);
         Task<WalletDto> AddBalanceAsync(Guid walletId, AddBalanceDto addBalanceDto);
+        Task UpdateBalanceAsync(Guid walletId, decimal newBalance);
     }
 } 

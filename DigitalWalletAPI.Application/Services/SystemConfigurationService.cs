@@ -16,9 +16,6 @@ namespace DigitalWalletAPI.Application.Services
         public async Task<string> GetValueAsync(string key)
         {
             var configuration = await _repository.GetByKeyAsync(key);
-            if (configuration == null)
-                throw new Exception($"Configuração obrigatória '{key}' não encontrada no banco de dados.");
-
             return configuration.Value;
         }
     }

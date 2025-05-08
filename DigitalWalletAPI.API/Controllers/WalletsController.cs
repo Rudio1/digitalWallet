@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authorization;
 using DigitalWalletAPI.Application.DTOs;
 using DigitalWalletAPI.Application.Services;
+using DigitalWalletAPI.Domain.Exceptions;
 
 namespace DigitalWalletAPI.API.Controllers
 {
@@ -53,6 +54,24 @@ namespace DigitalWalletAPI.API.Controllers
                 return NotFound(new { message = "Carteira não encontrada" });
             }
             catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+        }
+
+        [HttpPut("{walletId}/balance")]
+        public async Task<IActionResult> UpdateBalance(Guid walletId, [FromBody] decimal newBalance)
+        {
+            try
+            {
+                await _walletService.UpdateBalanceAsync(walletId, newBalance);
+                return NoContent();
+            }
+            catch (WalletNotFoundException)
+            {
+                return NotFound(new { message = "Carteira não encontrada" });
+            }
+            catch (InvalidWalletOperationException ex)
             {
                 return BadRequest(new { message = ex.Message });
             }

@@ -40,19 +40,8 @@ namespace DigitalWalletAPI.Infrastructure.Data
             userContext.Users.AddRange(user1, user2);
             await userContext.SaveChangesAsync();
 
-            var wallet1 = new Wallet
-            {
-                UserId = user1.Id,
-                Balance = 1000.00m,
-                CreatedAt = DateTime.UtcNow
-            };
-
-            var wallet2 = new Wallet
-            {
-                UserId = user2.Id,
-                Balance = 500.00m,
-                CreatedAt = DateTime.UtcNow
-            };
+            var wallet1 = new Wallet(user1.Id, 1000.00m);
+            var wallet2 = new Wallet(user2.Id, 500.00m);
 
             walletContext.Wallets.AddRange(wallet1, wallet2);
             await walletContext.SaveChangesAsync();

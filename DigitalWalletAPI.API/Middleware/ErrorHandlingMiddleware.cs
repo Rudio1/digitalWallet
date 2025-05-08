@@ -37,18 +37,18 @@ namespace DigitalWalletAPI.API.Middleware
             var errorResponse = new
             {
                 message = exception.Message,
-                statusCode = exception is UserException userException ? userException.StatusCode : (int)HttpStatusCode.InternalServerError
+                statusCode = exception is DomainException domainEx ? domainEx.StatusCode : 500
             };
 
             response.StatusCode = errorResponse.statusCode;
 
-            if (exception is UserException)
+            if (exception is DomainException)
             {
-                _logger.LogWarning(exception, "Erro de validação do usuário");
+                _logger.LogWarning(exception, "DomainException");
             }
             else
             {
-                _logger.LogError(exception, "Erro não tratado");
+                _logger.LogError(exception, "ErrorOver");
             }
 
             var result = JsonSerializer.Serialize(errorResponse);

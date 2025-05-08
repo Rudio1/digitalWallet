@@ -1,7 +1,7 @@
 using System;
 using System.Threading.Tasks;
 using DigitalWalletAPI.Domain.Entities;
-using DigitalWalletAPI.Application.Interfaces;
+using DigitalWalletAPI.Domain.Interfaces;
 using DigitalWalletAPI.Infrastructure.Data.Contexts;
 using Microsoft.EntityFrameworkCore;
 
@@ -32,11 +32,10 @@ namespace DigitalWalletAPI.Infrastructure.Repositories
             return wallet?.Balance ?? 0;
         }
 
-        public async Task<Wallet> CreateAsync(Wallet wallet)
+        public async Task CreateAsync(Wallet wallet)
         {
             await _context.Wallets.AddAsync(wallet);
             await _context.SaveChangesAsync();
-            return wallet;
         }
 
         public async Task UpdateAsync(Wallet wallet)

@@ -5,6 +5,8 @@ using System.Linq;
 using DigitalWalletAPI.Domain.Entities;
 using DigitalWalletAPI.Application.Interfaces;
 using DigitalWalletAPI.Application.DTOs;
+using DigitalWalletAPI.Domain.Interfaces;
+using DigitalWalletAPI.Domain.Exceptions;
 
 namespace DigitalWalletAPI.Application.Services
 {
@@ -25,14 +27,14 @@ namespace DigitalWalletAPI.Application.Services
         {
             var senderWallet = await _walletRepository.GetByIdAsync(senderWalletId);
             if (senderWallet == null)
-                throw new Exception("Carteira do remetente não encontrada");
+                throw new WalletNotFoundException();
 
             var receiverWallet = await _walletRepository.GetByIdAsync(createDto.ReceiverWalletId);
             if (receiverWallet == null)
-                throw new Exception("Carteira do destinatário não encontrada");
+                throw new WalletNotFoundException();
 
             if (senderWallet.Balance < createDto.Amount)
-                throw new Exception("Saldo insuficiente");
+                throw new InsufficientBalanceException(senderWalletId, "Saldo insuficiente para realizar a transação");
 
             var transaction = new Transaction
             {
@@ -45,11 +47,8 @@ namespace DigitalWalletAPI.Application.Services
 
             await _transactionRepository.CreateAsync(transaction);
 
-            // Atualiza os saldos das carteiras
-            senderWallet.Balance -= createDto.Amount;
-            receiverWallet.Balance += createDto.Amount;
-            senderWallet.UpdatedAt = DateTime.UtcNow;
-            receiverWallet.UpdatedAt = DateTime.UtcNow;
+            senderWallet.Debit(createDto.Amount);
+            receiverWallet.Credit(createDto.Amount);
 
             await _walletRepository.UpdateAsync(senderWallet);
             await _walletRepository.UpdateAsync(receiverWallet);
@@ -81,7 +80,7 @@ namespace DigitalWalletAPI.Application.Services
         {
             var transaction = await _transactionRepository.GetByIdAsync(id);
             if (transaction == null)
-                throw new KeyNotFoundException("Transação não encontrada");
+                throw new TransactionNotFoundException(id, "Transação não encontrada");
 
             return new TransactionDto
             {

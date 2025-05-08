@@ -3,12 +3,15 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
+using Microsoft.AspNetCore.Identity;
 using DigitalWalletAPI.Application.Interfaces;
 using DigitalWalletAPI.Application.Services;
 using DigitalWalletAPI.Infrastructure.Data.Contexts;
 using DigitalWalletAPI.Infrastructure.Repositories;
 using DigitalWalletAPI.Domain.Enums;
 using DigitalWalletAPI.API.Middleware;
+using DigitalWalletAPI.Domain.Interfaces;
+using DigitalWalletAPI.Domain.Entities;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -79,6 +82,8 @@ builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<IWalletService, WalletService>();
 builder.Services.AddScoped<ITransactionService, TransactionService>();
 builder.Services.AddScoped<ISystemConfigurationService, SystemConfigurationService>();
+
+builder.Services.AddScoped<IPasswordHasher<User>, PasswordHasher<User>>();
 
 // Configure JWT Authentication
 builder.Services.AddAuthentication(x =>
