@@ -10,16 +10,113 @@ API para gerenciamento de carteira digital, permitindo transferências entre usu
 - SQL Server
 - JWT Authentication
 - Swagger/OpenAPI
+- Clean Architecture
+- Domain-Driven Design (DDD)
 
 ## Escolha do Banco de Dados
-
 Optei pelo SQL Server por ser o banco de dados relacional com o qual tenho maior experiência e familiaridade no ecossistema .NET
 
-## Arquitetura
-- Clean Architecture
-- Repository Pattern
-- DTOs para transferência de dados
-- Injeção de Dependência
+## Estrutura do Projeto
+
+```
+DigitalWalletAPI/
+├── API/                 # Camada de apresentação
+├── Application/         # Camada de aplicação
+├── Domain/             # Camada de domínio
+└── Infrastructure/     # Camada de infraestrutura
+```
+
+## Funcionalidades
+
+- Autenticação de usuários com JWT
+- Criação e gerenciamento de carteiras
+- Transferências entre carteiras
+- Consulta de saldo
+- Histórico de transações
+- Configurações do sistema
+
+## Endpoints da API
+
+### Usuários
+- `POST /api/users/register` - Registra um novo usuário
+  ```json
+  {
+    "name": "Nome do Usuário",
+    "email": "email@exemplo.com",
+    "password": "Senha@123"
+  }
+  ```
+- `POST /api/users/login` - Autentica um usuário
+  ```json
+  {
+    "email": "email@exemplo.com",
+    "password": "Senha@123"
+  }
+  ```
+
+### Carteiras
+- `GET /api/wallets/user/{userId}` - Obtém carteira do usuário
+- `GET /api/wallets/balance/{walletId}` - Consulta saldo da carteira
+- `POST /api/wallets/balance/{walletId}` - Adiciona saldo à carteira
+  ```json
+  {
+    "amount": 100.50
+  }
+  ```
+
+### Transações
+- `POST /api/transactions/wallet/{senderWalletId}` - Realiza transferência
+  ```json
+  {
+    "receiverWalletId": "guid_da_carteira_destino",
+    "amount": 100.50
+  }
+  ```
+- `GET /api/transactions/wallet/{walletId}` - Lista transações da carteira
+- `GET /api/transactions/{id}` - Obtém detalhes de uma transação
+
+## Pré-requisitos
+
+- .NET 9 SDK
+- SQL Server
+- Visual Studio 2022 ou VS Code
+
+## Configuração
+
+1. Clone o repositório
+2. Configure a string de conexão no `appsettings.json`
+3. Execute as migrações:
+```bash
+dotnet ef database update
+```
+4. Execute o projeto:
+```bash
+dotnet run
+```
+
+## Documentação da API
+
+A documentação da API está disponível via Swagger em:
+```
+https://localhost:7001/swagger
+```
+
+## Tratamento de Erros
+
+A API utiliza um sistema padronizado de tratamento de erros com códigos HTTP apropriados:
+
+- 400: Requisição inválida
+- 401: Não autorizado
+- 404: Recurso não encontrado
+- 422: Erro de validação
+- 500: Erro interno do servidor
+
+## Autenticação
+
+A API utiliza JWT (JSON Web Token) para autenticação. Para acessar endpoints protegidos:
+
+1. Faça login via endpoint `/api/users/login`
+2. Use o token retornado no header `Authorization: Bearer {token}`
 
 ## Configurações do Sistema
 As configurações do sistema são gerenciadas através da tabela `SystemConfigurations` no banco de dados. As seguintes configurações são necessárias:
@@ -32,86 +129,3 @@ As configurações do sistema são gerenciadas através da tabela `SystemConfigu
 - `jwt_expiration_minutes`: Tempo de expiração do token em minutos (padrão: "60")
 - `jwt_issuer`: Emissor do token (padrão: "DigitalWalletAPI")
 - `jwt_audience`: Audiência do token (padrão: "DigitalWalletAPI")
-
-## Configuração do Banco de Dados
-1. Execute as migrações:
-```bash
-dotnet ef database update
-```
-
-2. Insira as configurações iniciais:
-```sql
--- Configuração da Wallet
-INSERT INTO SystemConfigurations (Parameter, Value, Description, CreatedAt, UpdatedAt)
-VALUES ('value_initial_wallet', '0', 'Valor inicial da carteira', GETUTCDATE(), GETUTCDATE());
-
--- Configurações do JWT
-INSERT INTO SystemConfigurations (Parameter, Value, Description, CreatedAt, UpdatedAt)
-VALUES ('jwt_secret_key', 'chave_jwt_secret', 'Chave secreta para assinatura do JWT, a mesma que deverá estar em appsettings.json', GETUTCDATE(), GETUTCDATE());
-
-INSERT INTO SystemConfigurations (Parameter, Value, Description, CreatedAt, UpdatedAt)
-VALUES ('jwt_expiration_minutes', '60', 'Tempo de expiração do token JWT em minutos', GETUTCDATE(), GETUTCDATE());
-
-INSERT INTO SystemConfigurations (Parameter, Value, Description, CreatedAt, UpdatedAt)
-VALUES ('jwt_issuer', 'DigitalWalletAPI', 'Emissor do token JWT', GETUTCDATE(), GETUTCDATE());
-
-INSERT INTO SystemConfigurations (Parameter, Value, Description, CreatedAt, UpdatedAt)
-VALUES ('jwt_audience', 'DigitalWalletAPI', 'Audiência do token JWT', GETUTCDATE(), GETUTCDATE());
-```
-
-## Autenticação
-A API utiliza autenticação JWT (JSON Web Token). Para acessar os endpoints protegidos:
-
-1. Registre um usuário usando o endpoint `POST /api/Users/register`
-2. Faça login usando o endpoint `POST /api/Users/login`
-3. Use o token retornado no header `Authorization: Bearer {token}`
-
-## Endpoints
-
-### Usuários
-- `POST /api/Users/register` - Registra um novo usuário
-  ```json
-  {
-    "name": "Nome do Usuário",
-    "email": "email@exemplo.com",
-    "password": "senha123"
-  }
-  ```
-
-- `POST /api/Users/login` - Autentica um usuário
-  ```json
-  {
-    "email": "email@exemplo.com",
-    "password": "senha123"
-  }
-  ```
-
-### Carteira
-- `GET /api/Wallets/balance` - Consulta saldo da carteira
-
-### Transações
-- `POST /api/Transactions/wallet/{senderWalletId}` - Realiza transferência
-  ```json
-  {
-    "receiverWalletId": "guid_da_carteira_destino",
-    "amount": 100.50
-  }
-  ```
-- `GET /api/Transactions/wallet/{walletId}` - Lista transações da carteira
-- `GET /api/Transactions/{id}` - Obtém detalhes de uma transação
-
-## Executando o Projeto
-1. Clone o repositório
-2. Restaure os pacotes:
-```bash
-dotnet restore
-```
-3. Execute as migrações:
-```bash
-dotnet ef database update
-```
-4. Inicie o projeto:
-```bash
-dotnet run --project DigitalWalletAPI.API
-```
-5. Acesse o Swagger em `https://localhost:7001/swagger` 
