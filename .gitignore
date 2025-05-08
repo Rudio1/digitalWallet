@@ -1,0 +1,69 @@
+# Arquivos de build
+bin/
+obj/
+*.dll
+*.pdb
+*.user
+*.userosscache
+*.suo
+*.userprefs
+
+# Arquivos de IDE
+.vs/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Arquivos de configuração sensíveis
+appsettings.json
+appsettings.*.json
+!appsettings.Example.json
+*.pfx
+*.key
+*.pem
+
+# Logs
+logs/
+*.log
+
+# Arquivos temporários
+*.tmp
+*.temp
+.DS_Store
+Thumbs.db
+
+# Arquivos de banco de dados
+*.mdf
+*.ldf
+*.ndf
+
+# Migrations
+**/Migrations/
+
+# Arquivos de cobertura de código
+coverage/
+*.coverage
+*.coveragexml
+
+# Arquivos de publicação
+*.Publish.xml
+*.pubxml
+*.publishproj
+
+# Arquivos de cache do NuGet
+packages/
+*.nupkg
+# Arquivos de cache do NuGet
+**/packages/*
+!**/packages/build/
+*.nuget.props
+*.nuget.targets
+
+# Arquivos de cache do Visual Studio
+.vs/
+.vscode/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates 
